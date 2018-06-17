@@ -280,4 +280,64 @@ public class BlackHoleModule : MonoBehaviour
                 Audio.PlaySoundAtTransform("BlackHoleSuckShort", Selectable.transform);
         }
     }
+
+#pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"Specify when to hold, release, tap, or wait for a timer tick in the correct order, for example: “!{0} hold, tick, release” or “!{0} tap, tick, tap”.";
+#pragma warning restore 414
+
+    IEnumerator ProcessTwitchCommand(string command)
+    {
+        if (_isSolved)
+            yield break;
+
+        var actions = new List<object>();
+        foreach (var piece in command.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(str => str.Trim().ToLowerInvariant()))
+        {
+            switch (piece)
+            {
+                case "hold":
+                case "down":
+                    actions.Add(new Action(() => { Selectable.OnInteract(); }));
+                    actions.Add(new WaitForSeconds(.1f));
+                    break;
+
+                case "release":
+                case "up":
+                    actions.Add(new Action(() => { Selectable.OnInteractEnded(); }));
+                    actions.Add(new WaitForSeconds(.1f));
+                    break;
+
+                case "tap":
+                case "click":
+                    actions.Add(new Action(() => { Selectable.OnInteract(); }));
+                    actions.Add(new WaitForSeconds(.1f));
+                    actions.Add(new Action(() => { Selectable.OnInteractEnded(); }));
+                    actions.Add(new WaitForSeconds(.1f));
+                    break;
+
+                case "tick":
+                case "wait":
+                    actions.Add(new Func<object>(() =>
+                    {
+                        var time = (int) Bomb.GetTime();
+                        return new WaitUntil(() => (int) Bomb.GetTime() != time);
+                    }));
+                    actions.Add(new WaitForSeconds(.1f));
+                    break;
+
+                default:
+                    yield break;
+            }
+        }
+
+        foreach (var action in actions)
+        {
+            if (action is Action)
+                ((Action) action)();
+            else if (action is Func<object>)
+                yield return ((Func<object>) action)();
+            else
+                yield return action;
+        }
+    }
 }
