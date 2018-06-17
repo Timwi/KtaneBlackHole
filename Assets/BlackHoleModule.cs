@@ -21,7 +21,8 @@ public class BlackHoleModule : MonoBehaviour
     public Transform SwirlContainer;
     public KMSelectable Selectable;
 
-    private Transform[] _swirls;
+    private Transform[] _swirlsVisible;
+    private Transform[] _swirlsActive;
 
     private static int _moduleIdCounter = 1;
     private int _moduleId;
@@ -36,33 +37,42 @@ public class BlackHoleModule : MonoBehaviour
         public List<int> SolutionCode;
         public int DigitsEntered = 0;
         public int DigitsExpected;
+        public BlackHoleModule LastDigitEntered;
     }
 
     private static readonly Dictionary<string, BlackHoleBombInfo> _infos = new Dictionary<string, BlackHoleBombInfo>();
     private BlackHoleBombInfo _info;
+    private int _digitsEntered;
+    private int _digitsExpected;
 
     void Start()
     {
         _moduleId = _moduleIdCounter++;
 
-        var colorNames = @"red,orange,yellow,green,cyan,blue,purple".Split(',');
-        _swirls = new Transform[49];
+        _swirlsActive = new Transform[49];
+        _swirlsVisible = new Transform[49];
         for (int i = 0; i < 49; i++)
         {
-            _swirls[i] = Instantiate(SwirlTemplate);
-            _swirls[i].parent = SwirlContainer.transform;
-            _swirls[i].localPosition = new Vector3(0, 0, 0);
-            _swirls[i].localScale = new Vector3(1, 1, 1);
-            _swirls[i].GetComponent<MeshRenderer>().material.mainTexture = SwirlTextures[i / 7];
+            _swirlsActive[i] = Instantiate(SwirlTemplate);
+            _swirlsActive[i].parent = SwirlContainer.transform;
+            _swirlsActive[i].localPosition = new Vector3(0, 0, 0);
+            var scale = Rnd.Range(.99f, 1.05f);
+            _swirlsActive[i].localScale = new Vector3(scale, scale, scale);
+            _swirlsActive[i].GetComponent<MeshRenderer>().material.mainTexture = SwirlTextures[i / 7];
+            _swirlsVisible[i] = _swirlsActive[i];
         }
         Destroy(SwirlTemplate.gameObject);
 
         var ser = Bomb.GetSerialNumber();
         if (!_infos.ContainsKey(ser))
-            _infos[ser] = _info = new BlackHoleBombInfo();
+            _infos[ser] = new BlackHoleBombInfo();
+        _info = _infos[ser];
         _info.Modules.Add(this);
 
         _lastTime = (int) Bomb.GetTime();
+        _lastSolved = 0;
+        _digitsEntered = 0;
+        _digitsExpected = 7;
 
         StartCoroutine(MoveSwirls());
         StartCoroutine(ComputeSolutionCode(ser));
@@ -103,6 +113,11 @@ public class BlackHoleModule : MonoBehaviour
             }
         }
 
+        //_info.SolutionCode.Clear();
+        //for (int i = 0; i < 7; i++)
+        //    _info.SolutionCode.Add(0);
+        //for (int i = 0; i < 7; i++)
+        //    _info.SolutionCode.Add(4);
         Debug.LogFormat(@"[Black Hole #{0}] Solution code = {1}", _moduleId, _info.SolutionCode.JoinString());
     }
 
@@ -119,7 +134,8 @@ public class BlackHoleModule : MonoBehaviour
             {
                 angles[i] -= rotationSpeeds[i] * Time.deltaTime;
                 for (int j = 0; j < 7; j++)
-                    _swirls[i * 7 + j].localEulerAngles = new Vector3(0, 0, angles[i] + 360f / 7 * j);
+                    if (_swirlsVisible[i * 7 + j] != null)
+                        _swirlsVisible[i * 7 + j].localEulerAngles = new Vector3(0, 0, angles[i] + 360f / 7 * j);
             }
             yield return null;
         }
@@ -127,10 +143,10 @@ public class BlackHoleModule : MonoBehaviour
 
     private List<string> _events = new List<string>();
     private int _lastTime = 0;
+    private int _lastSolved = 0;
 
     private void HoleInteractEnded()
     {
-        Debug.LogFormat(@"<Black Hole #{0}> UP", _moduleId);
         if (!_isSolved && _events.Count(e => e == "down") > _events.Count(e => e == "up"))
         {
             _events.Add("up");
@@ -140,9 +156,10 @@ public class BlackHoleModule : MonoBehaviour
 
     private bool HoleInteract()
     {
-        Debug.LogFormat(@"<Black Hole #{0}> DOWN", _moduleId);
         if (!_isSolved)
         {
+            if (_events.All(e => e == "tick"))
+                Audio.PlaySoundAtTransform("BlackHoleInput2", Selectable.transform);
             _events.Add("down");
             checkEvents();
         }
@@ -151,17 +168,58 @@ public class BlackHoleModule : MonoBehaviour
 
     private void Update()
     {
+        for (int i = (_digitsExpected - _digitsEntered) * 7; i < 49; i++)
+        {
+            if (_swirlsActive[i] != null)
+            {
+                StartCoroutine(DisappearSwirl(i));
+                _swirlsActive[i] = null;
+            }
+        }
+
         if (!_isSolved)
         {
             var time = (int) Bomb.GetTime();
             if (time != _lastTime)
             {
-                Debug.LogFormat(@"<Black Hole #{0}> TICK", _moduleId);
                 _events.Add("tick");
                 checkEvents();
                 _lastTime = time;
             }
+
+            var solved = Bomb.GetSolvedModuleNames().Where(mn => mn != "Black Hole").Count();
+            if (solved != _lastSolved)
+            {
+                _lastSolved = solved;
+                if (_info.LastDigitEntered == this)
+                {
+                    Debug.LogFormat(@"[Black Hole #{0}] You solved another module, so 2 digits are slashed from the code.", _moduleId);
+                    _info.LastDigitEntered = null;
+                    _info.DigitsExpected = Math.Max(_info.DigitsEntered + 1, _info.DigitsExpected - 2);
+                    _digitsExpected = Math.Max(_digitsEntered + 1, _digitsExpected - 2);
+                }
+            }
         }
+    }
+
+    private IEnumerator DisappearSwirl(int ix)
+    {
+        var swirl = _swirlsVisible[ix];
+        var startValue = swirl.localScale.x;
+        var endValue = .9f;
+        const float duration = 1f;
+        float elapsed = 0;
+
+        while (elapsed < duration)
+        {
+            yield return null;
+            elapsed += Time.deltaTime;
+            var size = (elapsed / duration) * (endValue - startValue) + startValue;
+            swirl.localScale = new Vector3(size, size, size);
+        }
+
+        _swirlsVisible[ix] = null;
+        Destroy(swirl.gameObject);
     }
 
     private static readonly string[][] _eventsPerDigit = new[]
@@ -200,6 +258,8 @@ public class BlackHoleModule : MonoBehaviour
         {
             Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is a wrong digit (I expected {2}).", _moduleId, digit, _info.SolutionCode[_info.DigitsEntered]);
             Module.HandleStrike();
+            _events.Clear();
+            _events.Add("tick");
         }
         else
         {
@@ -207,11 +267,17 @@ public class BlackHoleModule : MonoBehaviour
             _events.Clear();
             _events.Add("tick");
             _info.DigitsEntered++;
-            if (_info.DigitsEntered == _info.DigitsExpected)
+            _info.LastDigitEntered = this;
+
+            _digitsEntered++;
+            if (_digitsEntered == _digitsExpected)
             {
+                Audio.PlaySoundAtTransform("BlackHoleSuck", Selectable.transform);
                 Module.HandlePass();
                 _isSolved = true;
             }
+            else
+                Audio.PlaySoundAtTransform("BlackHoleSuckShort", Selectable.transform);
         }
     }
 }
