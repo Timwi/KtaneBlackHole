@@ -290,7 +290,7 @@ public class BlackHoleModule : MonoBehaviour
         if (_isSolved)
             yield break;
 
-        var actions = new List<object>();
+        var actions = new List<object>() { new WaitForSeconds(.1f), Tick(), new WaitForSeconds(.1f) };
         foreach (var piece in command.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(str => str.Trim().ToLowerInvariant()))
         {
             switch (piece)
@@ -317,11 +317,7 @@ public class BlackHoleModule : MonoBehaviour
 
                 case "tick":
                 case "wait":
-                    actions.Add(new Func<object>(() =>
-                    {
-                        var time = (int) Bomb.GetTime();
-                        return new WaitUntil(() => (int) Bomb.GetTime() != time);
-                    }));
+                    actions.Add(Tick());
                     actions.Add(new WaitForSeconds(.1f));
                     break;
 
@@ -340,4 +336,13 @@ public class BlackHoleModule : MonoBehaviour
                 yield return action;
         }
     }
+
+	private Func<object> Tick()
+	{
+		return () =>
+		{
+			var time = (int) Bomb.GetTime();
+			return new WaitUntil(() => (int) Bomb.GetTime() != time);
+		};
+	}
 }
