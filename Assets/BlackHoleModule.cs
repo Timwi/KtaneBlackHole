@@ -290,7 +290,7 @@ public class BlackHoleModule : MonoBehaviour
         if (_isSolved)
             yield break;
 
-        var actions = new List<object>() { new WaitForSeconds(.1f), Tick(), new WaitForSeconds(.1f) };
+        var actions = new List<object>() { null, Tick(), new WaitForSeconds(.1f) };
         foreach (var piece in command.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(str => str.Trim().ToLowerInvariant()))
         {
             switch (piece)
@@ -337,12 +337,12 @@ public class BlackHoleModule : MonoBehaviour
         }
     }
 
-	private Func<object> Tick()
-	{
-		return () =>
-		{
-			var time = (int) Bomb.GetTime();
-			return new WaitUntil(() => (int) Bomb.GetTime() != time);
-		};
-	}
+    private Func<object> Tick()
+    {
+        return () =>
+        {
+            var time = (int) Bomb.GetTime();
+            return new WaitUntil(() => (int) Bomb.GetTime() != time);
+        };
+    }
 }
