@@ -78,6 +78,14 @@ public class BlackHoleModule : MonoBehaviour
         StartCoroutine(ComputeSolutionCode(ser));
         Selectable.OnInteract = HoleInteract;
         Selectable.OnInteractEnded = HoleInteractEnded;
+
+        Bomb.OnBombExploded += delegate { _infos.Remove(ser); };
+        Bomb.OnBombSolved += delegate
+        {
+            // This check is necessary because this delegate gets called even if another bomb in the same room got solved instead of this one
+            if (Bomb.GetSolvedModuleNames().Count == Bomb.GetSolvableModuleNames().Count)
+                _infos.Remove(ser);
+        };
     }
 
     private IEnumerator ComputeSolutionCode(string serialNumber)
