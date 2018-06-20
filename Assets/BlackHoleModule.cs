@@ -121,11 +121,6 @@ public class BlackHoleModule : MonoBehaviour
             }
         }
 
-        //_info.SolutionCode.Clear();
-        //for (int i = 0; i < 7; i++)
-        //    _info.SolutionCode.Add(0);
-        //for (int i = 0; i < 7; i++)
-        //    _info.SolutionCode.Add(4);
         Debug.LogFormat(@"[Black Hole #{0}] Solution code = {1}", _moduleId, _info.SolutionCode.JoinString());
     }
 
