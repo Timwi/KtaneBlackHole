@@ -88,10 +88,12 @@
     <Compile Include="Assets\BlackHoleModule.cs" />
     <Compile Include="Assets\DummyModule.cs" />
     <Compile Include="Assets\KMBombInfoExtensions.cs" />
+    <Compile Include="Assets\TestHarness\EdgeworkConfiguration.cs" />
     <Compile Include="Assets\TestHarness\TestHarness.cs" />
     <Compile Include="Assets\TestHarness\TestHighlightable.cs" />
     <Compile Include="Assets\TestHarness\TestSelectable.cs" />
     <Compile Include="Assets\TestHarness\TestSelectableArea.cs" />
+    <Compile Include="Assets\TestHarness\THWidget.cs" />
     <Compile Include="Assets\Ut.cs" />
   </ItemGroup>
   <ItemGroup>
