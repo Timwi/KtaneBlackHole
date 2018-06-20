@@ -225,13 +225,14 @@ public class BlackHoleModule : MonoBehaviour
         Destroy(swirl.gameObject);
     }
 
-    private static readonly string[][] _eventsPerDigit = new[]
+    private static readonly string[][] _gestures = new[]
     {
         @"tick,down,tick,up,tick".Split(','),
         @"tick,down,up,tick,down,up,tick".Split(','),
         @"tick,down,up,tick,down,tick,up,tick".Split(','),
         @"tick,down,tick,up,down,tick,up,tick".Split(','),
-        @"tick,down,tick,tick,up,tick".Split(',')
+        @"tick,down,tick,tick,up,tick".Split(','),
+        @"tick,down,up,down,up,tick".Split(',')
     };
 
     private void checkEvents()
@@ -239,12 +240,12 @@ public class BlackHoleModule : MonoBehaviour
         while (_events.Count >= 2 && _events[0] == "tick" && _events[1] == "tick")
             _events.RemoveAt(0);
 
-        var input = _eventsPerDigit.IndexOf(list => list.SequenceEqual(_events));
+        var input = _gestures.IndexOf(list => list.SequenceEqual(_events));
         if (input != -1)
             process(input);
         else if (_events.Count(e => e == "up") >= _events.Count(e => e == "down"))
         {
-            var validPrefix = _eventsPerDigit.IndexOf(list => list.Take(_events.Count).SequenceEqual(_events));
+            var validPrefix = _gestures.IndexOf(list => list.Take(_events.Count).SequenceEqual(_events));
             if (validPrefix == -1)
             {
                 Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is not a valid digit.", _moduleId, _events.JoinString(", "));
@@ -257,7 +258,12 @@ public class BlackHoleModule : MonoBehaviour
 
     private void process(int digit)
     {
-        if (digit != _info.SolutionCode[_info.DigitsEntered])
+        if (digit == 5)  // the “get count of correct digits” gesture
+        {
+            Debug.LogFormat(@"[Black Hole #{0}] You asked for the number of correctly entered digits and I’ll give it to you ({1}).", _moduleId, _info.DigitsEntered);
+            // TODO
+        }
+        else if (digit != _info.SolutionCode[_info.DigitsEntered])
         {
             Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is a wrong digit (I expected {2}).", _moduleId, digit, _info.SolutionCode[_info.DigitsEntered]);
             Module.HandleStrike();
