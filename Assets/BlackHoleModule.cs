@@ -17,19 +17,37 @@ public class BlackHoleModule : MonoBehaviour
     public KMAudio Audio;
 
     public Texture[] SwirlTextures;
-    public Transform SwirlTemplate;
+    public Texture[] PlanetTextures;
+    public MeshRenderer ImageTemplate;
+    public GameObject ContainerTemplate;
+    public TextMesh TextTemplate;
     public Transform SwirlContainer;
     public KMSelectable Selectable;
 
     private Transform[] _swirlsVisible;
     private Transform[] _swirlsActive;
+    private Texture[][] _planetTextures;
+
+    private PlanetInfo _activePlanet = null;
 
     private static int _moduleIdCounter = 1;
     private int _moduleId;
     private bool _isSolved = false;
 
+    const float _planetSize = .5f;
+
     private readonly int[][] _grid = new[] { 3, 4, 1, 0, 2, 3, 1, 2, 0, 4, 1, 3, 0, 2, 4, 1, 2, 3, 4, 0, 3, 2, 4, 2, 1, 3, 0, 0, 1, 4, 4, 0, 0, 1, 3, 4, 2, 2, 1, 3, 1, 2, 1, 3, 0, 0, 4, 3, 4, 2, 4, 0, 2, 3, 4, 1, 3, 0, 2, 1, 2, 1, 3, 1, 3, 0, 4, 4, 0, 2, 2, 4, 4, 0, 0, 2, 1, 1, 3, 3, 0, 1, 3, 4, 2, 2, 0, 4, 3, 1, 0, 3, 2, 4, 1, 4, 3, 1, 2, 0 }
         .Split(10).Select(gr => gr.ToArray()).ToArray();
+
+    private readonly Color[] _colors = new[] {
+        new Color(0xe7/255f, 0x09/255f, 0x09/255f),
+        new Color(0xed/255f, 0x80/255f, 0x0c/255f),
+        new Color(0xde/255f, 0xda/255f, 0x16/255f),
+        new Color(0x17/255f, 0xb1/255f, 0x29/255f),
+        new Color(0x10/255f, 0xa0/255f, 0xa8/255f),
+        new Color(0x28/255f, 0x26/255f, 0xff/255f),
+        new Color(0xbb/255f, 0x0d/255f, 0xb0/255f)
+    };
 
     sealed class BlackHoleBombInfo
     {
@@ -49,19 +67,30 @@ public class BlackHoleModule : MonoBehaviour
     {
         _moduleId = _moduleIdCounter++;
 
+        _planetTextures = new Texture[12][];
+        for (int i = 0; i < 12; i++)
+            _planetTextures[i] = new Texture[7];
+        foreach (var tx in PlanetTextures)
+        {
+            var p1 = tx.name.IndexOf('-');
+            var p2 = tx.name.LastIndexOf('-');
+            _planetTextures[int.Parse(tx.name.Substring(p1 + 1, p2 - p1 - 1))][int.Parse(tx.name.Substring(p2 + 1))] = tx;
+        }
+
         _swirlsActive = new Transform[49];
         _swirlsVisible = new Transform[49];
         for (int i = 0; i < 49; i++)
         {
-            _swirlsActive[i] = Instantiate(SwirlTemplate);
+            var mr = Instantiate(ImageTemplate);
+            mr.material.mainTexture = SwirlTextures[i / 7];
+            _swirlsActive[i] = mr.transform;
             _swirlsActive[i].parent = SwirlContainer.transform;
             _swirlsActive[i].localPosition = new Vector3(0, 0, 0);
             var scale = Rnd.Range(.99f, 1.05f);
             _swirlsActive[i].localScale = new Vector3(scale, scale, scale);
-            _swirlsActive[i].GetComponent<MeshRenderer>().material.mainTexture = SwirlTextures[i / 7];
+            _swirlsActive[i].gameObject.SetActive(true);
             _swirlsVisible[i] = _swirlsActive[i];
         }
-        Destroy(SwirlTemplate.gameObject);
 
         var ser = Bomb.GetSerialNumber();
         if (!_infos.ContainsKey(ser))
@@ -79,7 +108,7 @@ public class BlackHoleModule : MonoBehaviour
         Selectable.OnInteract = HoleInteract;
         Selectable.OnInteractEnded = HoleInteractEnded;
 
-        Bomb.OnBombExploded += delegate { _infos.Remove(ser); };
+        Bomb.OnBombExploded += delegate { _infos.Clear(); };
         Bomb.OnBombSolved += delegate
         {
             // This check is necessary because this delegate gets called even if another bomb in the same room got solved instead of this one
@@ -144,15 +173,70 @@ public class BlackHoleModule : MonoBehaviour
         }
     }
 
-    private List<string> _events = new List<string>();
+    sealed class PlanetInfo
+    {
+        public int PlanetSymbol;
+        public GameObject Container, Image1, Image2;
+        public float ContainerAngle, Angle1, Angle2;
+        public float RotationSpeed;
+        public bool Shrinking;
+        public float Scale = 1;
+    }
+
+    private IEnumerator RotatePlanet(PlanetInfo planet)
+    {
+        planet.ContainerAngle = Rnd.Range(0, 360f);
+        planet.Angle1 = Rnd.Range(0, 360f);
+        planet.Angle2 = planet.Angle1 + 180;
+        planet.RotationSpeed = Rnd.Range(25f, 40f);
+
+        const float shrinkDuration = 1.5f;
+        float shrinkElapsed = 0;
+
+        while (planet.Container != null)
+        {
+            planet.Container.transform.localEulerAngles = new Vector3(0, 0, planet.ContainerAngle -= planet.RotationSpeed * Time.deltaTime);
+            planet.Image1.transform.localEulerAngles = new Vector3(0, 0, planet.Angle1 -= 2 * planet.RotationSpeed * Time.deltaTime);
+            if (planet.Image2 != null)
+                planet.Image2.transform.localEulerAngles = new Vector3(0, 0, planet.Angle2 -= 2 * planet.RotationSpeed * Time.deltaTime);
+
+            if (planet.Shrinking)
+            {
+                shrinkElapsed += Time.deltaTime;
+                if (shrinkElapsed >= shrinkDuration)
+                {
+                    // planet.Image2 is already destroyed at this point
+                    Destroy(planet.Image1);
+                    Destroy(planet.Container);
+                    yield break;
+                }
+                else
+                {
+                    var t = (1 - Mathf.Min(1, shrinkElapsed / shrinkDuration)) * _planetSize;
+                    planet.Container.transform.localScale = new Vector3(t, t, t);
+                }
+            }
+
+            yield return null;
+        }
+    }
+
+    private enum Event
+    {
+        MouseUp,
+        MouseDown,
+        Tick
+    }
+
+    private List<Event> _events = new List<Event>();
     private int _lastTime = 0;
     private int _lastSolved = 0;
 
     private void HoleInteractEnded()
     {
-        if (!_isSolved && _events.Count(e => e == "down") > _events.Count(e => e == "up"))
+        if (!_isSolved && _events.Count(e => e == Event.MouseDown) > _events.Count(e => e == Event.MouseUp))
         {
-            _events.Add("up");
+            _events.Add(Event.MouseUp);
             checkEvents();
         }
     }
@@ -161,9 +245,9 @@ public class BlackHoleModule : MonoBehaviour
     {
         if (!_isSolved)
         {
-            if (_events.All(e => e == "tick"))
+            if (_events.All(e => e == Event.Tick))
                 Audio.PlaySoundAtTransform("BlackHoleInput2", Selectable.transform);
-            _events.Add("down");
+            _events.Add(Event.MouseDown);
             checkEvents();
         }
         return false;
@@ -185,7 +269,7 @@ public class BlackHoleModule : MonoBehaviour
             var time = (int) Bomb.GetTime();
             if (time != _lastTime)
             {
-                _events.Add("tick");
+                _events.Add(Event.Tick);
                 checkEvents();
                 _lastTime = time;
             }
@@ -225,25 +309,79 @@ public class BlackHoleModule : MonoBehaviour
         Destroy(swirl.gameObject);
     }
 
-    private static readonly string[][] _gestures = new[]
+    private static readonly Event[][] _gestures = new[]
     {
-        @"tick,down,tick,up,tick".Split(','),
-        @"tick,down,up,tick,down,up,tick".Split(','),
-        @"tick,down,up,tick,down,tick,up,tick".Split(','),
-        @"tick,down,tick,up,down,tick,up,tick".Split(','),
-        @"tick,down,tick,tick,up,tick".Split(','),
-        @"tick,down,up,down,up,tick".Split(',')
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.Tick, Event.MouseUp, Event.Tick },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.MouseUp, Event.Tick }
+    };
+
+    private static readonly Event[][] _planetPrefixes = new[]
+    {
+        new[] { Event.Tick, Event.MouseDown },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.Tick, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown },
+        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.MouseUp },
     };
 
     private void checkEvents()
     {
-        while (_events.Count >= 2 && _events[0] == "tick" && _events[1] == "tick")
-            _events.RemoveAt(0);
+        while (_events.Count >= 2 && _events[0] == Event.Tick && (_events[1] == Event.Tick || _events[1] == Event.MouseUp))
+            _events.RemoveAt(1);
 
         var input = _gestures.IndexOf(list => list.SequenceEqual(_events));
         if (input != -1)
+        {
             process(input);
-        else if (_events.Count(e => e == "up") >= _events.Count(e => e == "down"))
+            return;
+        }
+
+        var planet = _planetPrefixes.LastIndexOf(p => p.SequenceEqual(_events.Take(p.Length)));
+        if (_activePlanet != null && planet != _activePlanet.PlanetSymbol)
+        {
+            _activePlanet.PlanetSymbol = planet;
+            var tx = _planetTextures[(planet + 1 + _digitsEntered) % _planetTextures.Length][_digitsEntered];
+            _activePlanet.Image1.GetComponent<MeshRenderer>().material.mainTexture = tx;
+            _activePlanet.Image2.GetComponent<MeshRenderer>().material.mainTexture = tx;
+        }
+        else if (_activePlanet == null && planet != -1)
+        {
+            var cont = Instantiate(ContainerTemplate);
+            cont.transform.parent = SwirlContainer.parent;
+            cont.transform.localPosition = new Vector3(0, 0, -0.002f);
+            cont.transform.localScale = new Vector3(_planetSize, _planetSize, _planetSize);
+            cont.gameObject.SetActive(true);
+
+            var img1 = Instantiate(ImageTemplate);
+            img1.transform.parent = cont.transform;
+            img1.transform.localPosition = new Vector3(-.1f, 0, 0);
+            img1.transform.localScale = new Vector3(1, 1, 1);
+            img1.gameObject.SetActive(true);
+            img1.material.mainTexture = _planetTextures[planet + 1][_digitsEntered];
+            img1.material.renderQueue = 2900;
+
+            var img2 = Instantiate(ImageTemplate);
+            img2.transform.parent = cont.transform;
+            img2.transform.localPosition = new Vector3(.1f, 0, 0);
+            img2.transform.localScale = new Vector3(1, 1, 1);
+            img2.gameObject.SetActive(true);
+            img2.material.mainTexture = _planetTextures[planet + 1][_digitsEntered];
+            img2.material.renderQueue = 2900;
+
+            StartCoroutine(RotatePlanet(_activePlanet = new PlanetInfo { Container = cont, Image1 = img1.gameObject, Image2 = img2.gameObject, PlanetSymbol = planet }));
+        }
+
+        if (_events.Count(e => e == Event.MouseUp) >= _events.Count(e => e == Event.MouseDown))
         {
             var validPrefix = _gestures.IndexOf(list => list.Take(_events.Count).SequenceEqual(_events));
             if (validPrefix == -1)
@@ -251,8 +389,22 @@ public class BlackHoleModule : MonoBehaviour
                 Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is not a valid digit.", _moduleId, _events.JoinString(", "));
                 Module.HandleStrike();
                 _events.Clear();
-                _events.Add("tick");
+                _events.Add(Event.Tick);
+                destroyPlanet();
             }
+        }
+    }
+
+    private void destroyPlanet()
+    {
+        if (_activePlanet != null)
+        {
+            Destroy(_activePlanet.Image1);
+            if (_activePlanet.Image2 != null)
+                Destroy(_activePlanet.Image2);
+            Destroy(_activePlanet.Container);
+            _activePlanet.Container = null;
+            _activePlanet = null;
         }
     }
 
@@ -261,23 +413,21 @@ public class BlackHoleModule : MonoBehaviour
         if (digit == 5)  // the “get count of correct digits” gesture
         {
             Debug.LogFormat(@"[Black Hole #{0}] You asked for the number of correctly entered digits and I’ll give it to you ({1}).", _moduleId, _info.DigitsEntered);
-            // TODO
+            showNumber(_info.DigitsEntered, white: true);
+            Audio.PlaySoundAtTransform("BlackHoleSuckShort", Selectable.transform);
         }
         else if (digit != _info.SolutionCode[_info.DigitsEntered])
         {
             Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is a wrong digit (I expected {2}).", _moduleId, digit, _info.SolutionCode[_info.DigitsEntered]);
             Module.HandleStrike();
-            _events.Clear();
-            _events.Add("tick");
+            destroyPlanet();
         }
         else
         {
             Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is correct.", _moduleId, digit);
-            _events.Clear();
-            _events.Add("tick");
             _info.DigitsEntered++;
             _info.LastDigitEntered = this;
-
+            showNumber(digit);
             _digitsEntered++;
             if (_digitsEntered == _digitsExpected)
             {
@@ -287,6 +437,29 @@ public class BlackHoleModule : MonoBehaviour
             }
             else
                 Audio.PlaySoundAtTransform("BlackHoleSuckShort", Selectable.transform);
+        }
+        _events.Clear();
+        _events.Add(Event.Tick);
+    }
+
+    private void showNumber(int digit, bool white = false)
+    {
+        if (_activePlanet != null)
+        {
+            Destroy(_activePlanet.Image1);
+            Destroy(_activePlanet.Image2);
+            var tm = Instantiate(TextTemplate);
+            tm.text = digit.ToString();
+            tm.color = white ? Color.white : _colors[_digitsEntered];
+            tm.transform.parent = _activePlanet.Container.transform;
+            tm.transform.localPosition = new Vector3(0, 0, 0);
+            tm.transform.localRotation = Quaternion.identity;
+            tm.transform.localScale = new Vector3(.07f / _planetSize, .125f / _planetSize, .125f / _planetSize);
+            tm.gameObject.SetActive(true);
+            _activePlanet.Image1 = tm.gameObject;
+            _activePlanet.Image2 = null;
+            _activePlanet.Shrinking = true;
+            _activePlanet = null;
         }
     }
 

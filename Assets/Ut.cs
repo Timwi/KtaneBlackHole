@@ -52,6 +52,26 @@ namespace BlackHole
         }
 
         /// <summary>
+        ///     Returns the index of the last element in this <paramref name="source"/> satisfying the specified <paramref
+        ///     name="predicate"/>. If no such elements are found, returns <c>-1</c>.</summary>
+        public static int LastIndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+        {
+            if (source == null)
+                throw new ArgumentNullException("source");
+            if (predicate == null)
+                throw new ArgumentNullException("predicate");
+            int result = -1;
+            int index = 0;
+            foreach (var v in source)
+            {
+                if (predicate(v))
+                    result = index;
+                index++;
+            }
+            return result;
+        }
+
+        /// <summary>
         ///     Turns all elements in the enumerable to strings and joins them using the specified <paramref
         ///     name="separator"/> and the specified <paramref name="prefix"/> and <paramref name="suffix"/> for each string.</summary>
         /// <param name="values">
