@@ -10,10 +10,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 615501dbe4f3fe94fbf4b564abb10237, type: 3}
   m_Name: ModConfig
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   id: BlackHole
   title: Black Hole
-  description: "Don\u2019t get sucked in!\n\nModule created by Timwi.\n\n[url=http://ktane.timwi.de/PDF/Black%20Hole.pdf]Manual
+  description: "Don\u2019t get sucked in!\n\nModule created by Timwi. Sounds by Jr. All Star.\n\n[url=http://ktane.timwi.de/PDF/Black%20Hole.pdf]Manual
     PDF[/url]\n[url=http://ktane.timwi.de/HTML/Black%20Hole.html]Manual HTML[/url]"
   version: 1.0
   outputFolder: build
