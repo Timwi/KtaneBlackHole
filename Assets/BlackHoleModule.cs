@@ -81,15 +81,22 @@ public class BlackHoleModule : MonoBehaviour
         _swirlsVisible = new Transform[49];
         for (int i = 0; i < 49; i++)
         {
+            var ct = Instantiate(ContainerTemplate).transform;
+            ct.parent = SwirlContainer.transform;
+            ct.localPosition = new Vector3(0, 0, 0);
+            var scale = Rnd.Range(.99f, 1.05f);
+            ct.localScale = new Vector3(scale, scale, scale);
+            ct.gameObject.SetActive(true);
+
             var mr = Instantiate(ImageTemplate);
             mr.material.mainTexture = SwirlTextures[i / 7];
-            _swirlsActive[i] = mr.transform;
-            _swirlsActive[i].parent = SwirlContainer.transform;
-            _swirlsActive[i].localPosition = new Vector3(0, 0, 0);
-            var scale = Rnd.Range(.99f, 1.05f);
-            _swirlsActive[i].localScale = new Vector3(scale, scale, scale);
-            _swirlsActive[i].gameObject.SetActive(true);
-            _swirlsVisible[i] = _swirlsActive[i];
+            mr.material.renderQueue = 2700 + i;
+            mr.transform.parent = ct;
+            mr.transform.localPosition = new Vector3((250 - 201 - 70 / 2) / 500f, (250 - 31 - 32 / 2) / 500f, 0);
+            mr.transform.localScale = new Vector3(70f / 500, 32f / 500, 1);
+            mr.gameObject.SetActive(true);
+
+            _swirlsActive[i] = _swirlsVisible[i] = ct;
         }
 
         var ser = Bomb.GetSerialNumber();
@@ -205,8 +212,6 @@ public class BlackHoleModule : MonoBehaviour
                 shrinkElapsed += Time.deltaTime;
                 if (shrinkElapsed >= shrinkDuration)
                 {
-                    // planet.Image2 is already destroyed at this point
-                    Destroy(planet.Image1);
                     Destroy(planet.Container);
                     yield break;
                 }
