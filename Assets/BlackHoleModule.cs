@@ -190,8 +190,32 @@ public class BlackHoleModule : MonoBehaviour
         public float Scale = 1;
     }
 
-    private IEnumerator RotatePlanet(PlanetInfo planet)
+    private IEnumerator CreateAndRotatePlanet(int planetIx)
     {
+        var cont = Instantiate(ContainerTemplate);
+        cont.transform.parent = SwirlContainer.parent;
+        cont.transform.localPosition = new Vector3(0, 0, -0.002f);
+        cont.transform.localScale = new Vector3(_planetSize, _planetSize, _planetSize);
+        cont.gameObject.SetActive(true);
+
+        var img1 = Instantiate(ImageTemplate);
+        img1.transform.parent = cont.transform;
+        img1.transform.localPosition = new Vector3(-.1f, 0, 0);
+        img1.transform.localScale = new Vector3(1, 1, 1);
+        img1.gameObject.SetActive(true);
+        img1.material.mainTexture = _planetTextures[planetIx + 1][_digitsEntered];
+        img1.material.renderQueue = 2900;
+
+        var img2 = Instantiate(ImageTemplate);
+        img2.transform.parent = cont.transform;
+        img2.transform.localPosition = new Vector3(.1f, 0, 0);
+        img2.transform.localScale = new Vector3(1, 1, 1);
+        img2.gameObject.SetActive(true);
+        img2.material.mainTexture = _planetTextures[planetIx + 1][_digitsEntered];
+        img2.material.renderQueue = 2900;
+
+        var planet = _activePlanet = new PlanetInfo { Container = cont, Image1 = img1.gameObject, Image2 = img2.gameObject, PlanetSymbol = planetIx };
+
         planet.ContainerAngle = Rnd.Range(0, 360f);
         planet.Angle1 = Rnd.Range(0, 360f);
         planet.Angle2 = planet.Angle1 + 180;
@@ -213,6 +237,7 @@ public class BlackHoleModule : MonoBehaviour
                 if (shrinkElapsed >= shrinkDuration)
                 {
                     Destroy(planet.Container);
+                    planet.Container = null;
                     yield break;
                 }
                 else
@@ -360,31 +385,7 @@ public class BlackHoleModule : MonoBehaviour
             _activePlanet.Image2.GetComponent<MeshRenderer>().material.mainTexture = tx;
         }
         else if (_activePlanet == null && planet != -1)
-        {
-            var cont = Instantiate(ContainerTemplate);
-            cont.transform.parent = SwirlContainer.parent;
-            cont.transform.localPosition = new Vector3(0, 0, -0.002f);
-            cont.transform.localScale = new Vector3(_planetSize, _planetSize, _planetSize);
-            cont.gameObject.SetActive(true);
-
-            var img1 = Instantiate(ImageTemplate);
-            img1.transform.parent = cont.transform;
-            img1.transform.localPosition = new Vector3(-.1f, 0, 0);
-            img1.transform.localScale = new Vector3(1, 1, 1);
-            img1.gameObject.SetActive(true);
-            img1.material.mainTexture = _planetTextures[planet + 1][_digitsEntered];
-            img1.material.renderQueue = 2900;
-
-            var img2 = Instantiate(ImageTemplate);
-            img2.transform.parent = cont.transform;
-            img2.transform.localPosition = new Vector3(.1f, 0, 0);
-            img2.transform.localScale = new Vector3(1, 1, 1);
-            img2.gameObject.SetActive(true);
-            img2.material.mainTexture = _planetTextures[planet + 1][_digitsEntered];
-            img2.material.renderQueue = 2900;
-
-            StartCoroutine(RotatePlanet(_activePlanet = new PlanetInfo { Container = cont, Image1 = img1.gameObject, Image2 = img2.gameObject, PlanetSymbol = planet }));
-        }
+            StartCoroutine(CreateAndRotatePlanet(planet));
 
         if (_events.Count(e => e == Event.MouseUp) >= _events.Count(e => e == Event.MouseDown))
         {
@@ -531,5 +532,27 @@ public class BlackHoleModule : MonoBehaviour
             var time = (int) Bomb.GetTime();
             return new WaitUntil(() => (int) Bomb.GetTime() != time);
         };
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        yield return null;
+        while (_digitsEntered < _digitsExpected)
+        {
+            StartCoroutine(CreateAndRotatePlanet(Rnd.Range(0, _planetTextures.Length - 1)));
+            foreach (var obj in WaitWithTrue(Rnd.Range(.1f, .9f)))
+                yield return obj;
+            var planet = _activePlanet;
+            process(_info.SolutionCode[_info.DigitsEntered]);
+            while (planet.Container != null)
+                yield return true;
+        }
+    }
+
+    IEnumerable WaitWithTrue(float time)
+    {
+        var startTime = Time.time;
+        while (Time.time < startTime + time)
+            yield return true;
     }
 }
