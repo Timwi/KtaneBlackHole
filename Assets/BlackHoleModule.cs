@@ -33,6 +33,7 @@ public class BlackHoleModule : MonoBehaviour
     private static int _moduleIdCounter = 1;
     private int _moduleId;
     private bool _isSolved = false;
+    private bool _isMouseDown = false;
 
     const float _planetSize = .5f;
 
@@ -264,22 +265,28 @@ public class BlackHoleModule : MonoBehaviour
 
     private void HoleInteractEnded()
     {
-        if (!_isSolved && _events.Count(e => e == Event.MouseDown) > _events.Count(e => e == Event.MouseUp))
+        if (_isSolved)
+            return;
+        if (_isMouseDown && _events.Count(e => e == Event.MouseDown) > _events.Count(e => e == Event.MouseUp))
         {
             _events.Add(Event.MouseUp);
             checkEvents();
         }
+        _isMouseDown = false;
     }
 
     private bool HoleInteract()
     {
-        if (!_isSolved)
+        if (_isSolved)
+            return false;
+        if (!_isMouseDown)
         {
             if (_events.All(e => e == Event.Tick))
                 Audio.PlaySoundAtTransform("BlackHoleInput2", Selectable.transform);
             _events.Add(Event.MouseDown);
             checkEvents();
         }
+        _isMouseDown = true;
         return false;
     }
 
