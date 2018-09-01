@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using BlackHole;
+using KModkit;
 using UnityEngine;
 using Rnd = UnityEngine.Random;
 
@@ -15,6 +16,7 @@ public class BlackHoleModule : MonoBehaviour
     public KMBombInfo Bomb;
     public KMBombModule Module;
     public KMAudio Audio;
+    public KMRuleSeedable RuleSeedable;
 
     public Texture[] SwirlTextures;
     public Texture[] PlanetTextures;
@@ -57,6 +59,7 @@ public class BlackHoleModule : MonoBehaviour
         public int DigitsEntered = 0;
         public int DigitsExpected;
         public BlackHoleModule LastDigitEntered;
+        public Event[][] Gestures;
     }
 
     private static readonly Dictionary<string, BlackHoleBombInfo> _infos = new Dictionary<string, BlackHoleBombInfo>();
@@ -99,11 +102,12 @@ public class BlackHoleModule : MonoBehaviour
 
             _swirlsActive[i] = _swirlsVisible[i] = ct;
         }
+        StartCoroutine(MoveSwirls());
 
-        var ser = Bomb.GetSerialNumber();
-        if (!_infos.ContainsKey(ser))
-            _infos[ser] = new BlackHoleBombInfo();
-        _info = _infos[ser];
+        var serialNumber = Bomb.GetSerialNumber();
+        if (!_infos.ContainsKey(serialNumber))
+            _infos[serialNumber] = new BlackHoleBombInfo();
+        _info = _infos[serialNumber];
         _info.Modules.Add(this);
 
         _lastTime = (int) Bomb.GetTime();
@@ -111,8 +115,6 @@ public class BlackHoleModule : MonoBehaviour
         _digitsEntered = 0;
         _digitsExpected = 7;
 
-        StartCoroutine(MoveSwirls());
-        StartCoroutine(ComputeSolutionCode(ser));
         Selectable.OnInteract = HoleInteract;
         Selectable.OnInteractEnded = HoleInteractEnded;
 
@@ -121,20 +123,107 @@ public class BlackHoleModule : MonoBehaviour
         {
             // This check is necessary because this delegate gets called even if another bomb in the same room got solved instead of this one
             if (Bomb.GetSolvedModuleNames().Count == Bomb.GetSolvableModuleNames().Count)
-                _infos.Remove(ser);
+                _infos.Remove(serialNumber);
         };
+
+        StartCoroutine(initialize(serialNumber));
     }
 
-    private IEnumerator ComputeSolutionCode(string serialNumber)
+    private IEnumerator initialize(string serialNumber)
     {
         yield return null;
 
+        // Only calculate the solution code once per bomb
         if (_info.SolutionCode == null)
         {
-            var x = serialNumber[2] - '0';
-            var y = serialNumber[5] - '0';
-            var dir = Bomb.GetPorts().Count() % 8;  // 0 = north, 1 = NE, etc.
+            // SEEDED RULE GENERATION STARTS HERE
+            var rnd = RuleSeedable.GetRNG();
 
+            // The RNG has the unfortunate property that the nth number generated is fairly predictable for many values of n.
+            // Therefore, we inject more randomness by skipping a random(!) number of samples.
+            var num = rnd.Next(0, 10);
+            for (var i = 0; i < num; i++)
+                rnd.NextDouble();
+
+            // Generate gestures
+            var gestureAlternative = new List<Event[]>
+            {
+                new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick ,Event.MouseDown,Event.MouseUp,Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick }
+            };
+
+            var gesturePool = new List<Event[]>
+            {
+                new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.Tick, Event.MouseUp, Event.Tick },
+                gestureAlternative[rnd.Next(0, gestureAlternative.Count)],
+                new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick }
+            }
+                .OrderBy(item => rnd.NextDouble())
+                .ToArray();
+
+            var gesturesC = new List<Event[]>
+            {
+                new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.MouseUp, Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.MouseUp, Event.Tick },
+                new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick }
+            };
+            _info.Gestures = gesturePool.Take(5).Concat(new[] { gesturesC[rnd.Next(0, gesturesC.Count)] }).ToArray();
+
+            // Starting position in the grid
+            int x, y;
+            var serialNumberDigits = serialNumber.Where(ch => char.IsNumber(ch));
+            switch (rnd.Next(0, 6))
+            {
+                case 0:
+                    x = serialNumberDigits.First() - '0';
+                    y = serialNumberDigits.Skip(1).First() - '0';
+                    break;
+                case 1:
+                    x = serialNumberDigits.Skip(1).First() - '0';
+                    y = serialNumberDigits.First() - '0';
+                    break;
+                case 2:
+                    x = serialNumber[5] - '0';
+                    y = serialNumber[2] - '0';
+                    break;
+                case 3:
+                    x = serialNumber[2] - '0';
+                    y = serialNumber[5] - '0';
+                    break;
+                case 4:
+                    x = serialNumberDigits.First() - '0';
+                    y = serialNumberDigits.Last() - '0';
+                    break;
+                default:
+                    x = serialNumberDigits.Last() - '0';
+                    y = serialNumberDigits.First() - '0';
+                    break;
+            }
+
+            // Initial direction
+            var dir = new[] { 2, 4, 6, 0 }[rnd.Next(0, 4)]; // 0 = north, 1 = NE, etc.
+            var initialClockwise = rnd.Next(0, 2) != 0;
+            var clockwise = rnd.Next(0, 2) != 0;
+            var widgetCount = new[] {
+                Bomb.GetBatteryCount() + Bomb.GetPortCount(),
+                Bomb.GetBatteryCount() + Bomb.GetIndicators().Count(),
+                Bomb.GetBatteryHolderCount() + Bomb.GetPortCount(),
+                Bomb.GetBatteryHolderCount() + Bomb.GetIndicators().Count(),
+                Bomb.GetPortCount() + Bomb.GetIndicators().Count(),
+                Bomb.GetPortCount(),
+                Bomb.GetIndicators().Count(),
+                Bomb.GetBatteryCount(),
+                Bomb.GetBatteryHolderCount()
+            }[rnd.Next(0, 9)];
+            if (initialClockwise)
+                dir = (dir + widgetCount) % 8;
+            else
+                dir = ((dir - widgetCount) % 8 + 8) % 8;
+
+            // Compute the full solution code
             _info.DigitsExpected = _info.Modules.Count * 7;
             _info.SolutionCode = new List<int>();
 
@@ -154,10 +243,9 @@ public class BlackHoleModule : MonoBehaviour
                         y = (y + 1) % 10;
                 }
                 _info.SolutionCode.Add(digit);
-                dir = (dir + 1) % 8;
+                dir = (dir + (clockwise ? 1 : 7)) % 8;
             }
         }
-
         Debug.LogFormat(@"[Black Hole #{0}] Solution code = {1}", _moduleId, _info.SolutionCode.JoinString());
     }
 
@@ -346,44 +434,19 @@ public class BlackHoleModule : MonoBehaviour
         Destroy(swirl.gameObject);
     }
 
-    private static readonly Event[][] _gestures = new[]
-    {
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp, Event.Tick },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.Tick, Event.MouseUp, Event.Tick },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.MouseUp, Event.Tick }
-    };
-
-    private static readonly Event[][] _planetPrefixes = new[]
-    {
-        new[] { Event.Tick, Event.MouseDown },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp, Event.MouseDown, Event.Tick, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.Tick, Event.Tick, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.Tick, Event.MouseDown, Event.Tick, Event.MouseUp },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown },
-        new[] { Event.Tick, Event.MouseDown, Event.MouseUp, Event.MouseDown, Event.MouseUp },
-    };
-
     private void checkEvents()
     {
         while (_events.Count >= 2 && _events[0] == Event.Tick && (_events[1] == Event.Tick || _events[1] == Event.MouseUp))
             _events.RemoveAt(1);
 
-        var input = _gestures.IndexOf(list => list.SequenceEqual(_events));
+        var input = _info.Gestures.IndexOf(list => list.SequenceEqual(_events));
         if (input != -1)
         {
             process(input);
             return;
         }
 
-        var planet = _planetPrefixes.LastIndexOf(p => p.SequenceEqual(_events.Take(p.Length)));
+        var planet = _events.Count(e => e != Event.Tick);
         if (_activePlanet != null && planet != _activePlanet.PlanetSymbol)
         {
             _activePlanet.PlanetSymbol = planet;
@@ -391,12 +454,12 @@ public class BlackHoleModule : MonoBehaviour
             _activePlanet.Image1.GetComponent<MeshRenderer>().material.mainTexture = tx;
             _activePlanet.Image2.GetComponent<MeshRenderer>().material.mainTexture = tx;
         }
-        else if (_activePlanet == null && planet != -1)
+        else if (_activePlanet == null && planet > 0)
             StartCoroutine(CreateAndRotatePlanet(planet));
 
         if (_events.Count(e => e == Event.MouseUp) >= _events.Count(e => e == Event.MouseDown))
         {
-            var validPrefix = _gestures.IndexOf(list => list.Take(_events.Count).SequenceEqual(_events));
+            var validPrefix = _info.Gestures.IndexOf(list => list.Take(_events.Count).SequenceEqual(_events));
             if (validPrefix == -1)
             {
                 Debug.LogFormat(@"[Black Hole #{0}] You entered {1}, which is not a valid digit.", _moduleId, _events.JoinString(", "));

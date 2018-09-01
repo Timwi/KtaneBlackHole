@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace BlackHole
+namespace KModkit
 {
     public enum Battery
     {
@@ -44,7 +44,8 @@ namespace BlackHole
         MSA,
         TRN,
         BOB,
-        FRK
+        FRK,
+        NLL
     }
 
     public enum IndicatorColor

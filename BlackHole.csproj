@@ -87,7 +87,9 @@
   <ItemGroup>
     <Compile Include="Assets\BlackHoleModule.cs" />
     <Compile Include="Assets\DummyModule.cs" />
-    <Compile Include="Assets\KMBombInfoExtensions.cs" />
+    <Compile Include="Assets\KMScripts\KMBombInfoExtensions.cs" />
+    <Compile Include="Assets\KMScripts\KMColorblindMode.cs" />
+    <Compile Include="Assets\KMScripts\KMRuleSeedable.cs" />
     <Compile Include="Assets\TestHarness\EdgeworkConfiguration.cs" />
     <Compile Include="Assets\TestHarness\TestHarness.cs" />
     <Compile Include="Assets\TestHarness\TestHighlightable.cs" />

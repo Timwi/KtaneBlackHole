@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 11489324}
   - component: {fileID: 11496072}
   - component: {fileID: 11489182}
+  - component: {fileID: 114786133493843886}
   m_Layer: 0
   m_Name: BlackHoleModule
   m_TagString: Untagged
@@ -104,7 +105,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 127088}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.1, y: 0, z: 0}
+  m_LocalPosition: {x: -0.1, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 453294}
@@ -248,6 +249,7 @@ MonoBehaviour:
   Bomb: {fileID: 11489324}
   Module: {fileID: 11429752}
   Audio: {fileID: 11496072}
+  RuleSeedable: {fileID: 114786133493843886}
   SwirlTextures:
   - {fileID: 2800000, guid: 8fddbf5091c9bad4c99a8cd2b1be07e1, type: 3}
   - {fileID: 2800000, guid: 703c0f917d3061d4d9f5602fd5ed13cb, type: 3}
@@ -783,6 +785,18 @@ MonoBehaviour:
   AllowSelectionWrapY: 0
   ForceSelectionHighlight: 0
   ForceInteractionHighlight: 0
+--- !u!114 &114786133493843886
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 127088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: adf69c2de51bd3c43bbd9bc22578ee08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _seed: 1
 --- !u!114 &114837593005813404
 MonoBehaviour:
   m_ObjectHideFlags: 1
