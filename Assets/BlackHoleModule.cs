@@ -540,43 +540,45 @@ public class BlackHoleModule : MonoBehaviour
     }
 
 #pragma warning disable 414
-    private readonly string TwitchHelpMessage = @"Specify when to hold, release, tap, or wait for a timer tick in the correct order, for example: “!{0} hold, tick, release” or “!{0} tap, tick, tap”.";
+    private readonly string TwitchHelpMessage = @"!{0} hold, tick, release | !{0} tap, tick, tap [specify when to hold, release, tap, or wait for a timer tick in the correct order]";
 #pragma warning restore 414
+
+    enum TpActions
+    {
+        Interact,
+        InteractEnded,
+        Tick
+    }
 
     IEnumerator ProcessTwitchCommand(string command)
     {
         if (_isSolved)
             yield break;
 
-        var actions = new List<object>() { null, Tick(), new WaitForSeconds(.1f) };
+        var actions = new List<TpActions>() { TpActions.Tick };
         foreach (var piece in command.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(str => str.Trim().ToLowerInvariant()))
         {
             switch (piece)
             {
                 case "hold":
                 case "down":
-                    actions.Add(new Action(() => { Selectable.OnInteract(); }));
-                    actions.Add(new WaitForSeconds(.1f));
+                    actions.Add(TpActions.Interact);
                     break;
 
                 case "release":
                 case "up":
-                    actions.Add(new Action(() => { Selectable.OnInteractEnded(); }));
-                    actions.Add(new WaitForSeconds(.1f));
+                    actions.Add(TpActions.InteractEnded);
                     break;
 
                 case "tap":
                 case "click":
-                    actions.Add(new Action(() => { Selectable.OnInteract(); }));
-                    actions.Add(new WaitForSeconds(.1f));
-                    actions.Add(new Action(() => { Selectable.OnInteractEnded(); }));
-                    actions.Add(new WaitForSeconds(.1f));
+                    actions.Add(TpActions.Interact);
+                    actions.Add(TpActions.InteractEnded);
                     break;
 
                 case "tick":
                 case "wait":
-                    actions.Add(Tick());
-                    actions.Add(new WaitForSeconds(.1f));
+                    actions.Add(TpActions.Tick);
                     break;
 
                 default:
@@ -584,24 +586,26 @@ public class BlackHoleModule : MonoBehaviour
             }
         }
 
+        yield return null;
+
         foreach (var action in actions)
         {
-            if (action is Action)
-                ((Action) action)();
-            else if (action is Func<object>)
-                yield return ((Func<object>) action)();
-            else
-                yield return action;
-        }
-    }
+            switch (action)
+            {
+                case TpActions.Interact:
+                    Selectable.OnInteract();
+                    break;
 
-    private Func<object> Tick()
-    {
-        return () =>
-        {
-            var time = (int) Bomb.GetTime();
-            return new WaitUntil(() => (int) Bomb.GetTime() != time);
-        };
+                case TpActions.InteractEnded:
+                    Selectable.OnInteractEnded();
+                    break;
+
+                case TpActions.Tick:
+                    var time = (int) Bomb.GetTime();
+                    yield return new WaitUntil(() => (int) Bomb.GetTime() != time);
+                    break;
+            }
+        }
     }
 
     IEnumerator TwitchHandleForcedSolve()
