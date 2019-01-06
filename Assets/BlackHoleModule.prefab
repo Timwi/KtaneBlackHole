@@ -436,6 +436,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4877176637519322}
   - component: {fileID: 114381197310519664}
+  - component: {fileID: 135726205354644508}
   m_Layer: 0
   m_Name: Hole
   m_TagString: Untagged
@@ -779,7 +780,8 @@ MonoBehaviour:
   IsPassThrough: 0
   ChildRowLength: 0
   Highlight: {fileID: 114355203526925716}
-  SelectableColliders: []
+  SelectableColliders:
+  - {fileID: 135726205354644508}
   DefaultSelectableIndex: 0
   AllowSelectionWrapX: 0
   AllowSelectionWrapY: 0
@@ -810,3 +812,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShaderNames:
   - KT/Transparent/Mobile Diffuse Underlay200
+--- !u!135 &135726205354644508
+SphereCollider:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1451188199994144}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.4
+  m_Center: {x: 0, y: 0, z: 0}
