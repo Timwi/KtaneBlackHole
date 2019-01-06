@@ -138,6 +138,7 @@ public class BlackHoleModule : MonoBehaviour
         {
             // SEEDED RULE GENERATION STARTS HERE
             var rnd = RuleSeedable.GetRNG();
+            Debug.LogFormat("[Black Hole #{0}] Using rule seed: {1}", _moduleId, rnd.Seed);
 
             // The RNG has the unfortunate property that the nth number generated is fairly predictable for many values of n.
             // Therefore, we inject more randomness by skipping a random(!) number of samples.
