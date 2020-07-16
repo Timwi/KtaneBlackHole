@@ -247,7 +247,7 @@ public class BlackHoleModule : MonoBehaviour
                 dir = (dir + (clockwise ? 1 : 7)) % 8;
             }
         }
-        Debug.LogFormat(@"[Black Hole #{0}] Solution code = {1}", _moduleId, _info.SolutionCode.JoinString());
+        Debug.LogFormat(@"[Black Hole #{0}] Solution code = {1}", _moduleId, _info.SolutionCode.JoinString(" "));
     }
 
     private IEnumerator MoveSwirls()
