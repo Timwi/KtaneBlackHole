@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KtaneWhiteHole", "KtaneWhiteHole.csproj", "{01C00400-817C-5546-ADCC-E4EC68097107}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KtaneWhiteHole.Editor", "KtaneWhiteHole.Editor.csproj", "{9AB5E48D-FBC7-EBE1-7AA2-7F4FDDFF8E23}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{01C00400-817C-5546-ADCC-E4EC68097107}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01C00400-817C-5546-ADCC-E4EC68097107}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01C00400-817C-5546-ADCC-E4EC68097107}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01C00400-817C-5546-ADCC-E4EC68097107}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AB5E48D-FBC7-EBE1-7AA2-7F4FDDFF8E23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AB5E48D-FBC7-EBE1-7AA2-7F4FDDFF8E23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AB5E48D-FBC7-EBE1-7AA2-7F4FDDFF8E23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AB5E48D-FBC7-EBE1-7AA2-7F4FDDFF8E23}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
