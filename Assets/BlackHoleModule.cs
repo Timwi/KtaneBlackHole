@@ -67,6 +67,10 @@ public class BlackHoleModule : MonoBehaviour
     private int _digitsEntered;
     private int _digitsExpected;
 
+    // Stuff for White Hole integration
+    private event Func<GameObject, bool> OnSwirlDisappear = null;
+    private event Func<GameObject, bool> OnNumberDisappear = null;
+
     void Start()
     {
         _moduleId = _moduleIdCounter++;
@@ -326,7 +330,8 @@ public class BlackHoleModule : MonoBehaviour
                 shrinkElapsed += Time.deltaTime;
                 if (shrinkElapsed >= shrinkDuration)
                 {
-                    Destroy(planet.Container);
+                    if (OnNumberDisappear == null || OnNumberDisappear(planet.Container))
+                        Destroy(planet.Container);
                     planet.Container = null;
                     yield break;
                 }
@@ -348,7 +353,7 @@ public class BlackHoleModule : MonoBehaviour
         Tick
     }
 
-    private List<Event> _events = new List<Event>();
+    private readonly List<Event> _events = new List<Event>();
     private int _lastTime = 0;
     private int _lastSolved = 0;
 
@@ -432,7 +437,8 @@ public class BlackHoleModule : MonoBehaviour
         }
 
         _swirlsVisible[ix] = null;
-        Destroy(swirl.gameObject);
+        if (OnSwirlDisappear == null || OnSwirlDisappear(swirl.gameObject))
+            Destroy(swirl.gameObject);
     }
 
     private void checkEvents()
