@@ -81,7 +81,7 @@ public class BlackHoleModule : MonoBehaviour
         _moduleId = _moduleIdCounter++;
 
         string day = System.DateTime.Now.ToString("MM/dd");
-        _isAprilFools = day == "10/05";
+        _isAprilFools = day == "04/01";
 
         _planetTextures = new Texture[12][];
         for (int i = 0; i < 12; i++)
