@@ -52,6 +52,9 @@ public class BlackHoleModule : MonoBehaviour
         new Color(0xbb/255f, 0x0d/255f, 0xb0/255f)
     };
 
+    private bool _isAprilFools;
+    private static string[] _aprilFoolsWords = { "cheese", "kumquat", "bread", "juice", "pizza", "moo", "beans", "burrito", "boom", "sauce", "milk", "beer", "milk", "orange", "splat", "feet", "cow", "toe", "thumb", "nose" };
+
     sealed class BlackHoleBombInfo
     {
         public List<BlackHoleModule> Modules = new List<BlackHoleModule>();
@@ -71,9 +74,14 @@ public class BlackHoleModule : MonoBehaviour
     private event Func<GameObject, bool> OnSwirlDisappear = null;
     private event Func<GameObject, bool> OnNumberDisappear = null;
 
+
+
     void Start()
     {
         _moduleId = _moduleIdCounter++;
+
+        string day = System.DateTime.Now.ToString("MM/dd");
+        _isAprilFools = day == "04/01";
 
         _planetTextures = new Texture[12][];
         for (int i = 0; i < 12; i++)
@@ -114,7 +122,7 @@ public class BlackHoleModule : MonoBehaviour
         _info = _infos[serialNumber];
         _info.Modules.Add(this);
 
-        _lastTime = (int) Bomb.GetTime();
+        _lastTime = (int)Bomb.GetTime();
         _lastSolved = 0;
         _digitsEntered = 0;
         _digitsExpected = 7;
@@ -397,7 +405,7 @@ public class BlackHoleModule : MonoBehaviour
 
         if (!_isSolved)
         {
-            var time = (int) Bomb.GetTime();
+            var time = (int)Bomb.GetTime();
             if (time != _lastTime)
             {
                 _events.Add(Event.Tick);
@@ -532,12 +540,18 @@ public class BlackHoleModule : MonoBehaviour
             Destroy(_activePlanet.Image1);
             Destroy(_activePlanet.Image2);
             var tm = Instantiate(TextTemplate);
-            tm.text = digit.ToString();
+            if (!_isAprilFools)
+                tm.text = digit.ToString();
+            else
+                tm.text = _aprilFoolsWords[Rnd.Range(0, _aprilFoolsWords.Length)];
             tm.color = white ? Color.white : _colors[_digitsEntered];
             tm.transform.parent = _activePlanet.Container.transform;
             tm.transform.localPosition = new Vector3(0, 0, 0);
             tm.transform.localRotation = Quaternion.identity;
-            tm.transform.localScale = new Vector3(.07f / _planetSize, .125f / _planetSize, .125f / _planetSize);
+            if (!_isAprilFools)
+                tm.transform.localScale = new Vector3(.07f / _planetSize, .125f / _planetSize, .125f / _planetSize);
+            else
+                tm.transform.localScale = new Vector3(.035f / _planetSize, .07f / _planetSize, .07f / _planetSize);
             tm.gameObject.SetActive(true);
             _activePlanet.Image1 = tm.gameObject;
             _activePlanet.Image2 = null;
@@ -608,8 +622,8 @@ public class BlackHoleModule : MonoBehaviour
                     break;
 
                 case TpActions.Tick:
-                    var time = (int) Bomb.GetTime();
-                    yield return new WaitUntil(() => (int) Bomb.GetTime() != time);
+                    var time = (int)Bomb.GetTime();
+                    yield return new WaitUntil(() => (int)Bomb.GetTime() != time);
                     break;
             }
         }
